@@ -1,0 +1,340 @@
+---
+title: "Final Project: COVID-19 Analysis"
+date: "3-14-2022"
+output: html_document
+author: "Adarsh Pantula (917164149)"
+---
+
+## Overview
+
+# Abstract
+
+The main objective of this project is to determine whether time of year has an effect on the number of cumulative COVID cases in the U.S. using the World Health Organization's COVID-19 dataset. We use both one-way and two-way ANOVA to determine the relationship between time of year and cumulative cases for one-way and country (India) as a second factor for two-way ANOVA. Based on the results, it appears that there is an effect between the time of year and the cumulative number of COVID cases in the U.S.
+
+# Introduction
+
+According to the CDC, coronavirus was a virus that was found around December 2019 in Wuhan, China. Due to its mutability and ability to spread quickly, it has caused a global pandemic continuing even to this day. Daily, the number of COVID cases fluctuates and with recent arrivals of new variants, the chance of exposure to this virus increases day by day. Using the WHO COVID dataset, we hope to better understand COVID trends in a given time period. 
+
+# Questions of Interest
+
+How does the time of year affect the number of cumulative COVID cases in the US?
+
+Does the country also have an effect on how time affects the total number of cumulative COVID cases?
+
+To examine the question above, we will employ the single factor ANOVA model and two-way ANOVA to address the second question.
+
+
+# WHO COVID-19 data
+
+For this project, we are observing and analyzing the COVID 19 dataset provided by the World Health Organization (WHO). Although the dataset is updated daily, we decided to only look at 2021 COVID cases. To further narrow our scope, we decided to analyze the effect of time of year on the number of cumulative COVID cases. The dataset contains a plethora of variables including the "date reported", relevant country metadata including "country code", "WHO region", and "country", number of "cumulative" and "new" cases, and finally, "cumulative" and "new" deaths.  For our analysis, we seek to analyze the relationship between time of year and number of cumulative COVID cases in the US. Additionally, we want to analyze to see if country also has an effect on the number of cumulative COVID cases in a given time period. To analyze this relationship, we take 3 subsets of 4 months each from 2021. We assign these subsets to a group number, (1 for Jan-April, 2 for May-Aug, and 3 for Sept-Dec) and add this as a column to our dataset. Furthermore, we add a mortality rate column which is calculated by Cumulative deaths/Cumulative cases. As a result, this will help us determine which time of the year is most sensitive to COVID breakouts/exposures so that the public is better informed about COVID protection.  
+
+Newly added variables to dataset:
+
+- group: assigns numerical value to identify which range of months the observations belongs to. Assigns: 1 to Jan-April, 2 to May-Aug, 3 to Sept-Dec
+- mort_rate: calculates the case-mortality rate for each observations. Calculated as: Cumulative_deaths/Cumulative_cases
+
+```{r echo=FALSE, eval=TRUE, show_col_types = FALSE}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+covid <- read_csv("https://covid19.who.int/WHO-COVID-19-global-data.csv")
+summary(covid)
+str(summary)
+us_covid <- covid %>% filter(Country == "United States of America")
+india_covid <- covid %>% filter(Country == "India")
+
+# created subsets of data, selects time periods based on explicit, numerical index values for the US
+jan_april_us <- us_covid[c(365:484),]
+may_aug_us <- us_covid[c(485:607),]
+sept_dec_us <- us_covid[c(608:729),]
+
+# collect subsets for India
+jan_april_ind <- india_covid[c(365:484),]
+may_aug_ind <- india_covid[c(485:607),]
+sept_dec_ind <- india_covid[c(608:729),]
+
+
+# create month column for each respective month (US)
+jan_april_vec <- rep(c(1,2,3,4),times = c(31,28,31,30)) 
+jan_april_us$month <- jan_april_vec
+#jan_april_vec
+
+may_aug_vec <- rep(c(5,6,7,8), times=c(31,30,31,31))
+may_aug_us$month <- may_aug_vec
+
+sept_dec_vec <- rep(c(9,10,11,12), times=c(30,31,30,31))
+#sept_dec_vec
+sept_dec_us$month <- sept_dec_vec
+
+# create month column for respective month (India)
+jan_april_vec <- rep(c(1,2,3,4),times = c(31,28,31,30)) 
+jan_april_ind$month <- jan_april_vec
+
+may_aug_vec <- rep(c(5,6,7,8), times=c(31,30,31,31))
+may_aug_ind$month <- may_aug_vec
+
+sept_dec_vec <- rep(c(9,10,11,12), times=c(30,31,30,31))
+sept_dec_ind$month <- sept_dec_vec
+
+merged_us <- rbind(jan_april_us,may_aug_us)
+merged_us <- rbind(merged_us,sept_dec_us)
+
+merged_ind <- rbind(jan_april_ind, may_aug_ind)
+merged_ind <- rbind(merged_ind,sept_dec_ind)
+
+group_vec <- rep(c(1,2,3), times=c(120, 123, 122))
+merged_us$group <- group_vec
+merged_ind$group <- group_vec
+
+MORrate_us <- merged_us$Cumulative_deaths/merged_us$Cumulative_cases
+MORrate_ind <- merged_ind$Cumulative_deaths/merged_ind$Cumulative_cases
+merged_us$mort_rate <- MORrate_us
+merged_ind$mort_rate <- MORrate_ind
+
+# take random sample
+sample_us <- merged_us %>% group_by(group) %>% slice_sample(n=50)
+sample_ind <- merged_ind %>% group_by(group) %>% slice_sample(n=50)
+
+# Cumulative Case plots
+ggplot(data=merged_us, mapping=aes(x=Date_reported, y=Cumulative_cases)) + geom_line() + xlab("Date") + ylab("Cumulative cases")
+ggplot(data=merged_ind, mapping=aes(x=Date_reported, y=Cumulative_cases)) + geom_line()+ xlab("Date") + ylab("Cumulative cases")
+
+# Cumulative Death plots
+ggplot(data=merged_us, mapping=aes(x=Date_reported, y=Cumulative_deaths)) + geom_line()+ xlab("Date") + ylab("Cumulative deaths")
+ggplot(data=merged_ind, mapping=aes(x=Date_reported, y=Cumulative_deaths)) + geom_line()+ xlab("Date") + ylab("Cumulative deaths")
+
+# Mortality plots
+ggplot(data=merged_us, mapping=aes(x=Date_reported, y=mort_rate)) + geom_line()+ xlab("Date") + ylab("Mortality rate")
+ggplot(data=merged_ind, mapping=aes(x=Date_reported, y=mort_rate)) + geom_line()+ xlab("Date") + ylab("Mortality rate")
+```
+
+Before delving into our model diagnosis/analysis, we'll plot the trend of 3 variables; namely Cumulative_cases, Cumulative_deaths, and a variable we created, mort_rate. (Note: mort_rate is calculated by Cumulative_deaths/Cumulative_cases). Above are plots that illustrate cumulative cases, cumulative deaths, and mortality rate in both the U.S. and India. As observed by the plots above, it appears the the U.S's cumulative cases and deaths graphs both have a linear behavior, while the mortality rate has a sort of random-like behavior. For India, it appears that the cumulative cases and deaths graphs both have logistic behavior and the mortality rate has a random-like behavior, similar to the U.S.'s mortality graph. 
+
+# Summary Plots/Statistics
+
+```{r echo=FALSE}
+# US Summary
+summary(merged_us)
+```
+
+
+Since the data is skewed and this data contains extremely large values, we will use the mean as the main summary statistics and point of analysis. Above we generate the summary statistics for the U.S. As indicated above, the mean number of cumulative cases in the U.S. is around  35.8 million, the mean number of cumulative deaths is around 613k, and the mean mortality rate is 0.017.  
+
+
+```{r echo=FALSE}
+# India
+summary(merged_ind)
+```
+
+Similarly, we generate the summary statistics for India. As indicated above, the mean number of cumulative cases in India is around 25.1 million, the mean number of cumulative deaths is around 331k, and the mean mortality rate is 0.013. 
+
+
+```{r echo=FALSE}
+# Cumulative Cases (US and India)
+
+summaryy <- merged_us %>% group_by(group) %>% summarise(cum_cases=mean(Cumulative_cases))
+merged_plot <- ggplot(summaryy, aes(x=group, y=cum_cases, fill=Cumulative_cases)) + geom_col(fill="#0099f9") + scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + ggtitle("US mean Cumulative Cases") + ylab("Cumulative Cases")
+merged_plot
+
+summaryy1 <- merged_ind %>% group_by(group) %>% summarise(cum_cases=mean(Cumulative_cases))
+merged_plot1 <- ggplot(summaryy1, aes(x=group, y=cum_cases, fill=Cumulative_cases)) + geom_col(fill="#0099f9") + scale_y_continuous(labels = scales::unit_format(unit = "M", scale = 1e-6)) + ggtitle("India mean Cumulative Cases") + ylab("Cumulative Cases")
+merged_plot1
+```
+
+In the bar graph above, we plot the mean number of cumulative cases for both the U.S. and India. The group value on the x-axis indicates which range of months it is. 1 specifies Jan-April, 2 specifies May-Aug, and 3 specifies Sept-Dec. As indicated by the bar graph, it appears that the mean number of cumulative cases and month group in both graphs has a positive correlation. One key difference is that the change from group 1 to group 2 for India is more drastic than the U.S.'s rate of change. This drastic increase between groups 1 and 2 and the subsequent taper off in group 3 highlights a logistic rate of behavior (India); on the other hand, the U.S. increases at somewhat the same rate or in a more linear fashion. 
+
+
+```{r echo=FALSE}
+# Cumulative Deaths
+
+summaryy2 <- merged_us %>% group_by(group) %>% summarise(cum_deaths=mean(Cumulative_deaths))
+merged_plot2 <- ggplot(summaryy2, aes(x=group, y=cum_deaths, fill=Cumulative_deaths)) + geom_col(fill="#0099f9") + scale_y_continuous(labels = scales::unit_format(unit = "k", scale = 1e-3)) + ggtitle("US mean Cumulative Deaths") + ylab("Cumulative Deaths")
+merged_plot2
+
+summaryy3 <- merged_ind %>% group_by(group) %>% summarise(cum_deaths=mean(Cumulative_deaths))
+merged_plot3 <- ggplot(summaryy3, aes(x=group, y=cum_deaths, fill=Cumulative_deaths)) + geom_col(fill="#0099f9") + scale_y_continuous(labels = scales::unit_format(unit = "k", scale = 1e-3)) + ggtitle("India mean Cumulative Deaths") + ylab("Cumulative Deaths")
+merged_plot3
+```
+
+In the bar graph above, we do the same thing as the plot above except this time we plot the mean number of cumulative deaths for each group. Again, as expected and similar to the mean number of cumulative cases graph, the number of deaths also increase in a linear fashion for the U.S. Furthermore, the mean number of cumulative deaths for India appears to increase in a  more logistic fashion with a drastic increase between group 1 and 2, and then tapers off with group 3. 
+
+
+```{r echo=FALSE}
+# Case Mortality plots
+summaryy4 <- merged_us %>% group_by(group) %>% summarise(case_mort=mean(Cumulative_deaths/Cumulative_cases))
+merged_plot4 <- ggplot(summaryy4, aes(x=group, y=case_mort, fill=case_mort)) + geom_col(fill="#0099f9") + ggtitle("US mean Case-Mortality Rate") + ylab("Mortality Rate")
+merged_plot4
+
+summaryy5 <- merged_ind %>% group_by(group) %>% summarise(case_mort=mean(Cumulative_deaths/Cumulative_cases))
+merged_plot5 <- ggplot(summaryy5, aes(x=group, y=case_mort, fill=case_mort)) + geom_col(fill="#0099f9") + ggtitle("India mean Case-Mortality Rate") + ylab("CMortality Rate")
+merged_plot5
+```
+
+Lastly, in the plot above we plot the mean case-mortality rate against the groups. Surprisingly, the trends of these graph appear random and don't seem to possess any real pattern/correlation. For the U.S., we observe a slight decrease in mortality rate in the last group. However, for India, the rates appears sporadic. 
+
+
+```{r echo=FALSE}
+boxplot(Cumulative_cases ~ group,data=merged_us) 
+```
+
+Since our main question of interest addresses cumulative cases, we have only generated boxplots for cumulative cases. Note that these plots can differ depending on the variable. To get a better visualization of the five-number summary, above we have graphed a boxplot. As indicated by the plot, it seems that Sept-Dec has a significantly higher mean number of COVID cases. This can be attributed to the Omnicron surge which occurred around Nov. 2021. 
+
+```{r echo=FALSE}
+boxplot(Cumulative_cases ~ group ,data=merged_ind) 
+```
+
+As observed by the boxplot above, the months of May-Aug experienced a huge surge in total cases. This matches the plot at the beginning of the report which had a logistic trend. It appears that a huge surge occurs, but is then leveled out upon reaching the Sept-Dec group. 
+
+
+# Inferential Analysis
+
+a) In terms of model selection, we will use a One-way and Two-way ANOVA. The factor will be the time of year (i.e. Jan-Apr) and we will observe any difference in the mean number of cumulative COVID cases for each time period. For the two-way ANOVA the second factor will be country and we will observe if the country's effect is also present on cumulative number of cases. 
+
+b) Assumptions:
+  - Each sample originates from a normally distributed population
+  - Independent samples 
+  - The variance across different groups should be the same
+  
+c) Our model fits the constraints of this task because the single factor ANOVA model tests for difference between independent segments. In this case, those independent segments are the 3 time periods. In the context of our problem, the null hypothesis would be that means between treatment groups do not differ (no statistically significant difference between time of year and number of cumulative COVID cases) and the alternative hypothesis would be that the means differ. 
+
+The hypotheses for the one-way ANOVA are:
+
+H0 = no difference among treatment means
+HA = at least one group differs significantly from the overall mean
+
+For one-way ANOVA, we want to observe if time of year has an effect on the number of cumulative cases in the U.S.
+
+```{r echo=FALSE}
+# model selection
+
+merged_country <- rbind(merged_us,merged_ind)
+merged_country <- merged_country %>% group_by(group) %>% slice_sample(n=50)
+
+sample_us$group <- as.factor(sample_us$group)
+
+# One-way ANOVA
+res_aov <- aov(Cumulative_cases ~ group, data = sample_us)
+summary(res_aov) 
+
+#res_aov1 <- aov(Cumulative_deaths ~ group, data=sample_us)
+```
+
+
+Since the p-value appears to be less than the alpha level of 0.001, we can successfully reject the null hypothesis of no difference among treatment means. In other words, we can determine that time of year plays a role in the mean number of cumulative cases in the U.S. However, this does come with some caveats that will be addressed in the sensitivity analysis portion. 
+
+
+```{r}
+# Two-way ANOVA
+two.way <- aov(Cumulative_cases ~ group + Country, data = merged_country)
+summary(two.way)
+```
+
+
+Even though the p-value for this model is less than the significance level of 0.001, which means we can reject the null hypothesis, we must first test the validity of the assumptions to ensure that this ANOVA model holds. Without any transformations or sensitivity analysis, currently the country also has an effect on mean cumulative number of cases. 
+
+
+```{r}
+# Determine best model
+AIC(res_aov, two.way)
+```
+
+From the AICs, the best model before sensitivity analysis is the one-way ANOVA. 
+
+## Sensitivity Analysis
+
+# One-Way ANOVA Sensitivity
+
+In order to ensure the soundness of our model and validate the ANOVA assumptions, we need to run a series of tests. First and foremost, let's take a look at the ANOVA assumptions again:
+
+- Data is normally distributed (normality)
+- Equal variance across treatment groups (Homogeneity of variance)
+- Observations independent 
+
+First, we will test the normality and homogeneity of variance of our data using Q-Q plots and the Shapiro test. Once running the sensitivity analysis, we will see why we were not able to run ANOVA to find relationship between time and cumulative deaths or mortality rate.
+
+```{r echo=FALSE}
+library(car)
+library(MASS)
+# Evaluate the normality of a Cumulative Cases using a Q-Q plot
+plot(res_aov)
+```
+
+Taking a look at the plots above, it appears that the mean of the residuals is centered around zero. Looking at the scale location plot, it appears that the mean or red line deviates from 1 very slightly. This  means that outliers are not causing a bias in the model. In terms of normality, looking at the normal Q-Q plot, it appears most observations lie on the dotted line with some minor deviation towards the tail ends. However to more accurately test for normality, we will also conduct the Shapiro-Wilk normality Test.
+
+```{r}
+# Shapiro Test
+one_way_res<-resid(res_aov)
+shapiro.test(one_way_res)
+```
+
+If the p-value for the Shapiro-Wilk test lies above 0.05, it means we fail to reject the null hypothesis of non-normality. However, if it lies below 0.05, then our data deviates from a normal distribution. Due to the nature of the data and its imbalance, the data appears to slightly deviate from a normal distribution. Although the p-value indicates it is a normal distribution, we will illustrate a square roottransformation which can be used to fix normality issues in case the data is skewed. To remedy this issue, we can perform a square root transformation on the data to skew the data so that it moves closer to a normal distribution.
+
+
+```{r}
+# Sq. Rt transformation
+sample_us$Cumulative_cases <- (sample_us$Cumulative_cases)^(1/2)
+res_aov_transf <- aov(Cumulative_cases ~ group, data= sample_us)
+
+# Rerun Shapiro-Wilk
+one_way_res_transf<-resid(res_aov_transf)
+shapiro.test(one_way_res_transf)
+
+
+```
+
+After performing a square root transformation on the data and rerunning the model with the transformed data, we get a different result. Depedning on the result, we can use the transformation or simply use the raw untrasformed data.
+
+In terms of independence, the data that was sampled has been drawn randomly. Therefore, we satisfy all the assumptions of ANOVA and can conclude that our one-way model is valid.
+
+Lastly, we perform a Tukey's range test to determine whether or not the treatment groups differ from one another. If the p-value is less than the significance level, which in this case is 0.05, then it indicates that at least one of the treatment groups differ from one another.
+
+ 
+```{r echo=FALSE}
+# Tukey's HSD Test
+plot(TukeyHSD(res_aov, conf.level=.95))
+```
+
+To better visualize the confidence intervals, we construct a Tukey plot. From the Tukey plot, we can observe that the mean levels of each group vary greatly at a 0.95 confidence level. Therefore, we can conclude that the treatment groups differ from one another. 
+
+
+For one-way ANOVA, the assumptions hold and we can conclude that time of year has an effect on the mean number of cumulative COVID cases.
+
+# Two-Way ANOVA Sensitivity Analysis
+
+Now we want to ensure that the two-way model satisfies the ANOVA assumptions. More specifically, we want to test whether or not country and time both actually have an effect on the cumulative number of COVID cases. We perform the same series tests as before. Starting with normality and equal variance, we create the Normal Q-Q and Residual plots.
+
+```{r echo=FALSE}
+# Two-Way 
+plot(two.way)
+```
+
+From the graphs alone, we can confidently conclude that the model does not fit the assumption of equal variance nor normality. As a result, we can apply a transformation to perhaps skew the data to a more normal fit.
+
+```{r}
+# Cube. Rt. transformation
+merged_country$Cumulative_cases <- (merged_country$Cumulative_cases)^(-1/3)
+two.way_transf <- aov(Cumulative_cases ~ group, data = merged_country)
+
+# Shapiro-Wilk Test
+two_way_res_transf<-resid(two.way_transf)
+shapiro.test(two_way_res_transf)
+
+```
+
+As seen in the transformation and subsequent test above, even the transformation has no effect on the normality of the model. Thus, we can conclude that the ANOVA assumptions are not validated and we cannot capture whether or not country plays a factor in the Cumulative number of COVID cases for two-way ANOVA.
+
+# Additional Caveats/Suggestions for Future
+
+Currently, the one-way ANOVA model assumptions seem to hold for our model, albeit very loosely. Additionally, we were not able to validate the assumptions for the two-way model and determine whether or not the country had an effect on the mean number of cumulative cases. One aspect we noticed was that the Cumulative number of cases in the U.S. and time have a continually increasing, linear relationship. As a result, that may have added some bias to the model fit itself. Additionally, factors like the data imbalance and various outliers may have played a role as well. In order to be more conclusive and sure of our assumptions in the future, perhaps we could include more sampled data and fit a non-linear/non-parametric model. One more big point to make is that no causality can be inferred between time of year and Cumulative number of COVID cases. More often than not, other factors are involved and, therefore, causality cannot  be inferred. 
+
+# Conclusion
+
+Using data that we aggregated from the World Health Organization COVID-19 (WHO) dataset, our analysis highlights a relationship between the cumulative number of COVID cases in the U.S. and time of year. We used the variables present in the dataset to construct a one-way ANOVA model that confirms the effect of time on the number of COVID cases in the U.S. Additionally, the model assumptions appear to hold and therefore the low p-value rejects the null that there exists no difference between the means of different time periods. Based on our results, it appears that time of year has an effect on the number of COVID cases and other factors such as the Omnicron surge and differing variants can also play a role in the rapid increase of cases throughout the year. Additionally, weather patterns and seasonal changes can play a factor as well. Overall, we cannot conclude causality between the two factors, however, we can better understand the behavior of the virus so that people are more well-informed of its nature. 
+
+# Acknowledgements (Group 10 Partners)
+Tarun Devesetti,
+Udirno Chaudhuri
+
+# Appendix
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
